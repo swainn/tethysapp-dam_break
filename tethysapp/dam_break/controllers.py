@@ -9,7 +9,7 @@ from tethys_apps.sdk import get_spatial_dataset_engine
 
 from app import ProvoDamBreak as app
 
-from .utilities import generate_flood_hydrograph, write_hydrograph_input_file, convert_raster_to_wkb, execute_job, get_jobs
+from .utilities import generate_flood_hydrograph, write_hydrograph_input_file, convert_raster_to_wkb
 from .model import SessionMaker, FloodExtent
 from sqlalchemy import select
 
@@ -148,7 +148,6 @@ def jobs(request):
     context = {'jobs': jobs}
 
     return render(request, 'dam_break/jobs.html', context)
-
 
 
 def map(request):
