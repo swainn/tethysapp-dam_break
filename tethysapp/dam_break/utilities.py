@@ -155,3 +155,7 @@ def convert_raster_to_wkb(raster_path, srid=4326, no_data=0):
         # second item in the resulting list.
         wellKnownBinary =  sql.split("'")[1]
         return wellKnownBinary
+
+
+def process_results(user, job_id):
+    pass
