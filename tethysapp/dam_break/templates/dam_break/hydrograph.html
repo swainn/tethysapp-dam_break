@@ -4,3 +4,7 @@
 {% block app_content %}
   {% gizmo highcharts_plot_view flood_plot %}
 {% endblock %}
+
+{% block app_actions %}
+  <a class='btn btn-success btn-xs results-btn' href="{% url 'dam_break:run' %}">Submit</a>
+{% endblock %}
