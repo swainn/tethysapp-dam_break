@@ -1,7 +1,8 @@
+from datetime import datetime
 from django.shortcuts import render
 
 from tethys_apps.sdk.gizmos import *
-
+from .utilities import generate_flood_hydrograph, write_hydrograph_input_file
 
 def home(request):
     """
@@ -50,13 +51,6 @@ def home(request):
                 submit=True
     )
 
-    if request.POST  and 'submit' in request.POST:
-        peak_flow = request.POST['peak_flow']
-        time_to_peak = request.POST['time_to_peak']
-        peak_duration = request.POST['peak_duration']
-        falling_limb_duration = request.POST['falling_limb_duration']
-
-
     context = {'peak_flow_slider': peak_flow_slider,
                'time_peak_slider': time_peak_slider,
                'peak_duration_slider': peak_duration_slider,
@@ -65,3 +59,56 @@ def home(request):
     }
 
     return render(request, 'dam_break/home.html', context)
+
+def hydrograph(request):
+    """
+    Controller for the hydrograph page.
+    """
+    peak_flow = 800.0
+    time_to_peak = 6
+    peak_duration = 6
+    falling_limb_duration = 24
+
+    if request.POST  and 'submit' in request.POST:
+        peak_flow = float(request.POST['peak_flow'])
+        time_to_peak = int(request.POST['time_to_peak'])
+        peak_duration = int(request.POST['peak_duration'])
+        falling_limb_duration = int(request.POST['falling_limb_duration'])
+
+    # Generate hydrograph
+    hydrograph = generate_flood_hydrograph(
+        peak_flow=peak_flow, 
+        time_to_peak=time_to_peak, 
+        peak_duration=peak_duration, 
+        falling_limb_duration=falling_limb_duration
+    )
+
+    # Write GSSHA file
+    write_hydrograph_input_file(
+        username=request.user.username, 
+        hydrograph=hydrograph                  
+    )
+
+    # Configure the Hydrograph Plot View
+    flood_hydrograph_plot = HighChartsTimeSeries(
+            title='Flood Hydrograph',
+            y_axis_title='Flow',
+            y_axis_units='cms',
+            series=[
+               {
+                   'name': 'Flood Hydrograph',
+                   'color': '#0066ff',
+                   'data': hydrograph
+               },
+            ]
+    )
+
+    flood_plot = PlotView(
+        highcharts_object=flood_hydrograph_plot,
+        width='100%',
+        height='500px'
+    )
+
+    context = {'flood_plot': flood_plot}
+
+    return render(request, 'dam_break/hydrograph.html', context)

@@ -22,6 +22,9 @@ class ProvoDamBreak(TethysAppBase):
         url_maps = (UrlMap(name='home',
                            url='dam-break',
                            controller='dam_break.controllers.home'),
+                    UrlMap(name='hydrograph',
+                           url='dam-break/hydrograph',
+                           controller='dam_break.controllers.hydrograph'),
         )
 
         return url_maps
