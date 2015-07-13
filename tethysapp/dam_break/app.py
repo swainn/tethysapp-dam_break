@@ -27,20 +27,8 @@ class ProvoDamBreak(TethysAppBase):
                            url='dam-break/hydrograph',
                            controller='dam_break.controllers.hydrograph'),
                     UrlMap(name='map',
-                           url='dam-break/map',
+                           url='dam-break/{job_id}/map',
                            controller='dam_break.controllers.map'),
         )
 
         return url_maps
-
-    def persistent_stores(self):
-        """
-        Register one or more persistent stores for your app.
-        """
-
-        stores = (PersistentStore(name='flood_extents',
-                                 initializer='init_stores:init_flood_extents_db',
-                                 spatial=True),
-        )
-
-        return stores

@@ -7,9 +7,7 @@ from django.shortcuts import render
 from tethys_apps.sdk.gizmos import *
 from tethys_apps.sdk import get_spatial_dataset_engine
 
-from .utilities import generate_flood_hydrograph, write_hydrograph_input_file, convert_raster_to_wkb
-from .model import SessionMaker, FloodExtent
-from sqlalchemy import select
+from .utilities import generate_flood_hydrograph, write_hydrograph_input_file
 
 
 def home(request):
@@ -122,7 +120,7 @@ def hydrograph(request):
     return render(request, 'dam_break/hydrograph.html', context)
 
 
-def map(request):
+def map(request, job_id):
     """
     Controller to handle map page.
     """
@@ -192,60 +190,54 @@ def map(request):
                 default_style='dambreak:provo_boundary'
             )
 
-    # Convert Raster File into Well Known Binary (WKB)
-    raster_file = os.path.join(DATA_DIR, '0084_maxFlood.txt')
-    wkb = convert_raster_to_wkb(
-        raster_path=raster_file,
-        srid=26912, 
-        no_data=0
-    )
+    
+    ######################## TO BE MOVED TO COMPUTING JOB ################################
+    # # Upload Raster Zip Archive to GeoServer (TO BE MOVED TO COMPUTING JOB)
+    ## CONVERT RASTER HEADERS TO THIS:
+    # ncols 122
+    # nrows 96
+    # xllcenter 437269.78
+    # yllcenter 4450221.00
+    # cellsize     90.00
+    # NODATA_value 0
+    # ## Paths
+    # raster_archive = os.path.join(DATA_DIR, 'Max Flood', 'Max Flood.zip')
+    # max_flood_sld = os.path.join(DATA_DIR, 'Max Flood', 'provo_max_flood.sld')
+    
+    # ## Upload raster as coverage
+    # geoserver_engine.create_coverage_resource(
+    #     store_id='dambreak:max_flood_1',
+    #     coverage_file=raster_archive,
+    #     coverage_type='arcgrid',
+    #     debug=True,
+    #     overwrite=True
+    # )
 
-    # Add Raster to PostGIS Database
-    db_session = SessionMaker()
-    flood_extent = FloodExtent(
-        username=request.user.username,
-        wkb=wkb
-    )
-    db_session.add(flood_extent)
-    db_session.commit()
+    # ## Upload SLD style
+    # with open(max_flood_sld, 'r') as sld:
+    #     geoserver_engine.create_style(
+    #         style_id='dambreak:provo_max_flood',
+    #         sld=sld.read()
+    #     )
 
-    # Query for last raster for the current user and convert to GeoJSON
-    sql = '''
-           SELECT val, ST_AsGeoJSON(ST_Transform(geom, 4326)) As polygon
-           FROM (
-              SELECT (ST_DumpAsPolygons(raster)).*
-              FROM flood_extents WHERE id={0}
-           ) As foo
-           ORDER BY val;
-           '''.format(1)
-    result = db_session.execute(sql)
+    # ## Apply style to raster layer
+    # geoserver_engine.update_layer(
+    #     layer_id='dambreak:max_flood_1',
+    #     default_style='dambreak:provo_max_flood'
+    # )
 
-    # Assemble a list of flood extent GeoJSON features
-    flood_extent_polygons = []
-    for row in result:
-        polygon_feature = {
-            'type': 'Feature',
-            'geometry': json.loads(row.polygon)
-        }
-        flood_extent_polygons.append(polygon_feature)
+    ########################################################################################
 
-    flood_extent_geojson = {
-        'type': 'FeatureCollection',
-        'crs': {
-            'type': 'name',
-            'properties': {
-                'name': 'EPSG:4326'
-            }
-        },
-        'features': flood_extent_polygons
-    }
-
+    flood_layer_id = 'dambreak:max_flood_{0}'.format(job_id)
+    
     flood_extent_layer = MVLayer(
-        source='GeoJSON',
-        options=flood_extent_geojson,
-        legend_title='Flood',
-        legend_extent=[-111.74, 40.21, -111.61, 40.27],
-        legend_classes=[
+            source='ImageWMS',
+            options={'url': 'http://localhost:8181/geoserver/wms',
+                     'params': {'LAYERS': flood_layer_id},
+                     'serverType': 'geoserver'},
+            legend_title='Flood',
+            legend_extent=[-111.74, 40.21, -111.61, 40.27],
+            legend_classes=[
                 MVLegendClass('polygon', 'Flood Extent', fill='#ffffff', stroke='#3399CC'),
     ])
 
@@ -286,7 +278,5 @@ def map(request):
     )
 
     context = {'map_options': map_options}
-    
-    db_session.close()
     
     return render(request, 'dam_break/map.html', context)

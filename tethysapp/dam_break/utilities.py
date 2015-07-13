@@ -116,42 +116,42 @@ def write_hydrograph_input_file(username, hydrograph):
 
             f.write(line)
 
-def convert_raster_to_wkb(raster_path, srid=4326, no_data=0):
-    """
-    Use the raster2pgsql program to convert a raster into well known binary (WKB) format.
+# def convert_raster_to_wkb(raster_path, srid=4326, no_data=0):
+#     """
+#     Use the raster2pgsql program to convert a raster into well known binary (WKB) format.
 
-    Returns either WKB string or None if an error occurs.
-    """
-    # CONSTANTS
-    RASTER2PGSQL = '/usr/bin/raster2pgsql'
+#     Returns either WKB string or None if an error occurs.
+#     """
+#     # CONSTANTS
+#     RASTER2PGSQL = '/usr/bin/raster2pgsql'
 
-    raster2pgsqlProcess = subprocess.Popen(
-       [
-        RASTER2PGSQL,
-        '-s',
-        str(srid),
-        '-N',
-        str(no_data),
-        raster_path, 
-        'n_a'
-       ],
-       stdout=subprocess.PIPE
-    )
+#     raster2pgsqlProcess = subprocess.Popen(
+#        [
+#         RASTER2PGSQL,
+#         '-s',
+#         str(srid),
+#         '-N',
+#         str(no_data),
+#         raster_path, 
+#         'n_a'
+#        ],
+#        stdout=subprocess.PIPE
+#     )
             
-    # This commandline tool generates the SQL to load the raster into the database
-    # However, we want to use SQLAlchemy to load the values into the database. 
-    # We do this by extracting the wkb value from the sql that is generated.
-    sql, error = raster2pgsqlProcess.communicate()        
+#     # This commandline tool generates the SQL to load the raster into the database
+#     # However, we want to use SQLAlchemy to load the values into the database. 
+#     # We do this by extracting the wkb value from the sql that is generated.
+#     sql, error = raster2pgsqlProcess.communicate()        
     
-    if sql:
-        # This esoteric line is used to extract only the value of the raster (which is stored as a Well Know Binary string)
+#     if sql:
+#         # This esoteric line is used to extract only the value of the raster (which is stored as a Well Know Binary string)
         
-        # Example of Output:
-        # BEGIN;
-        # INSERT INTO "idx_index_maps" ("rast") VALUES ('0100...56C096CE87'::raster);
-        # END;
+#         # Example of Output:
+#         # BEGIN;
+#         # INSERT INTO "idx_index_maps" ("rast") VALUES ('0100...56C096CE87'::raster);
+#         # END;
         
-        # The WKB is wrapped in single quotes. Splitting on single quotes isolates it as the 
-        # second item in the resulting list.
-        wellKnownBinary =  sql.split("'")[1]
-        return wellKnownBinary
+#         # The WKB is wrapped in single quotes. Splitting on single quotes isolates it as the 
+#         # second item in the resulting list.
+#         wellKnownBinary =  sql.split("'")[1]
+#         return wellKnownBinary
