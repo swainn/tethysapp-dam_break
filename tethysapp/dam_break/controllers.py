@@ -1,10 +1,16 @@
 import os
+import json
+import urllib
 from datetime import datetime
 from django.shortcuts import render
 
 from tethys_apps.sdk.gizmos import *
 from tethys_apps.sdk import get_spatial_dataset_engine
-from .utilities import generate_flood_hydrograph, write_hydrograph_input_file
+
+from .utilities import generate_flood_hydrograph, write_hydrograph_input_file, convert_raster_to_wkb
+from .model import SessionMaker, FloodExtent
+from sqlalchemy import select
+
 
 def home(request):
     """
@@ -125,6 +131,8 @@ def map(request):
     GEOSERVER_URI = 'tethys.ci-water.org/dam-break'
     ADDRESS_LAYER_ID = GEOSERVER_WORKSPACE + ':provo_address_points'
     BOUNDARY_LAYER_ID = GEOSERVER_WORKSPACE + ':provo_boundary'
+    PROJECT_DIR = os.path.dirname(__file__)
+    DATA_DIR = os.path.join(PROJECT_DIR, 'data')
 
     # Initialize GeoServer Layers if not Created Already
     geoserver_engine = get_spatial_dataset_engine('default')
@@ -139,10 +147,7 @@ def map(request):
             response = geoserver_engine.create_workspace(workspace_id=GEOSERVER_WORKSPACE, 
                                                          uri=GEOSERVER_URI)
             # Upload the Two Shapefiles
-            project_dir = os.path.dirname(__file__)
-            data_dir = os.path.join(project_dir, 'data')
-
-            address_zip = os.path.join(data_dir, 'Provo Address Points', 'Provo Address Points.zip')
+            address_zip = os.path.join(DATA_DIR, 'Provo Address Points', 'Provo Address Points.zip')
             response = geoserver_engine.create_shapefile_resource(
                 store_id=ADDRESS_LAYER_ID,
                 shapefile_zip=address_zip,
@@ -150,7 +155,7 @@ def map(request):
                 debug=True
             )
 
-            boundary_zip = os.path.join(data_dir, 'Provo Boundary', 'Provo Boundary.zip')
+            boundary_zip = os.path.join(DATA_DIR, 'Provo Boundary', 'Provo Boundary.zip')
             response = geoserver_engine.create_shapefile_resource(
                 store_id=BOUNDARY_LAYER_ID,
                 shapefile_zip=boundary_zip,
@@ -158,11 +163,95 @@ def map(request):
                 debug=True
             )
 
-    # Initialize the Map with 
+    # Convert Raster File into Well Known Binary (WKB)
+    raster_file = os.path.join(DATA_DIR, '0084_maxFlood.txt')
+    wkb = convert_raster_to_wkb(
+        raster_path=raster_file,
+        srid=26912, 
+        no_data=0
+    )
+
+    # Add Raster to PostGIS Database
+    db_session = SessionMaker()
+    flood_extent = FloodExtent(
+        username=request.user.username,
+        wkb=wkb
+    )
+    db_session.add(flood_extent)
+    db_session.commit()
+
+    # Query for last raster for the current user and convert to GeoJSON
+    sql = '''
+           SELECT val, ST_AsGeoJSON(ST_Transform(geom, 4326)) As polygon
+           FROM (
+              SELECT (ST_DumpAsPolygons(raster)).*
+              FROM flood_extents WHERE id={0}
+           ) As foo
+           ORDER BY val;
+           '''.format(1)
+    result = db_session.execute(sql)
+
+    # Assemble a list of flood extent GeoJSON features
+    flood_extent_polygons = []
+    for row in result:
+        polygon_feature = {
+            'type': 'Feature',
+            'geometry': json.loads(row.polygon)
+        }
+        flood_extent_polygons.append(polygon_feature)
+
+    flood_extent_geojson = {
+        'type': 'FeatureCollection',
+        'crs': {
+            'type': 'name',
+            'properties': {
+                'name': 'EPSG:4326'
+            }
+        },
+        'features': flood_extent_polygons
+    }
+
+    flood_extent_layer = MVLayer(
+        source='GeoJSON',
+        options=flood_extent_geojson,
+        legend_title='Flood',
+        legend_extent=[-111.74, 40.21, -111.61, 40.27],
+        legend_classes=[
+                MVLegendClass('polygon', 'Flood Extent', fill='#ffffff', stroke='#3399CC'),
+    ])
+
+    # Filter Addresses by Flood Extent
+    sql = '''
+           SELECT val, ST_AsGML(ST_Transform(geom, 4326)) As polygon
+           FROM (
+              SELECT (ST_DumpAsPolygons(raster)).*
+              FROM flood_extents WHERE id={0}
+           ) As foo
+           ORDER BY val;
+           '''.format(1)
+    result = db_session.execute(sql)
+
+    gml_polygons = ''
+    for row in result:
+        intersects = '<Intersects>'\
+                         '<PropertyName>the_geom</PropertyName>'\
+                         '{0}'\
+                     '</Intersects>'.format(row.polygon)
+        gml_polygons = intersects
+
+    filter_query = '<Filter xmlns:gml="http://www.opengis.net/gml">'\
+                        '{0}'\
+                    '</Filter>'.format(gml_polygons)
+
+    filter_query = urllib.quote(filter_query)
+    print(filter_query)
+
+    # Create Address and Boundary Layers
     address_layer = MVLayer(
             source='ImageWMS',
             options={'url': 'http://localhost:8181/geoserver/wms',
-                     'params': {'LAYERS': ADDRESS_LAYER_ID},
+                     'params': {'LAYERS': ADDRESS_LAYER_ID,
+                                'FILTER': filter_query},
                      'serverType': 'geoserver'},
             legend_title='Provo Addresses',
             legend_extent=[-111.74, 40.20, -111.61, 40.33],
@@ -189,7 +278,7 @@ def map(request):
 
     map_options = MapView(height='500px',
                           width='100%',
-                          layers=[address_layer, boundary_layer],
+                          layers=[flood_extent_layer, address_layer, boundary_layer],
                           legend=True,
                           view=initial_view
     )

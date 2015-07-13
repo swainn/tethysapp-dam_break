@@ -1,4 +1,5 @@
 from tethys_apps.base import TethysAppBase, url_map_maker
+from tethys_apps.base import PersistentStore
 
 
 class ProvoDamBreak(TethysAppBase):
@@ -31,3 +32,15 @@ class ProvoDamBreak(TethysAppBase):
         )
 
         return url_maps
+
+    def persistent_stores(self):
+        """
+        Register one or more persistent stores for your app.
+        """
+
+        stores = (PersistentStore(name='flood_extents',
+                                 initializer='init_stores:init_flood_extents_db',
+                                 spatial=True),
+        )
+
+        return stores
