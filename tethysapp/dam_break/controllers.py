@@ -127,40 +127,69 @@ def map(request):
     Controller to handle map page.
     """
     # Constants
-    GEOSERVER_WORKSPACE = 'dambreak'
-    GEOSERVER_URI = 'tethys.ci-water.org/dam-break'
-    ADDRESS_LAYER_ID = GEOSERVER_WORKSPACE + ':provo_address_points'
-    BOUNDARY_LAYER_ID = GEOSERVER_WORKSPACE + ':provo_boundary'
     PROJECT_DIR = os.path.dirname(__file__)
     DATA_DIR = os.path.join(PROJECT_DIR, 'data')
 
     # Initialize GeoServer Layers if not Created Already
     geoserver_engine = get_spatial_dataset_engine('default')
-
     response = geoserver_engine.list_workspaces()
     
     if response['success']:
         workspaces = response['result']
 
-        if GEOSERVER_WORKSPACE not in workspaces:
+        if 'dambreak' not in workspaces:
             # Create a GeoServer Workspace for the App
-            response = geoserver_engine.create_workspace(workspace_id=GEOSERVER_WORKSPACE, 
-                                                         uri=GEOSERVER_URI)
-            # Upload the Two Shapefiles
+            response = geoserver_engine.create_workspace(workspace_id='dambreak', 
+                                                         uri='tethys.ci-water.org/dam-break')
+
+            ## Paths to files
             address_zip = os.path.join(DATA_DIR, 'Provo Address Points', 'Provo Address Points.zip')
-            response = geoserver_engine.create_shapefile_resource(
-                store_id=ADDRESS_LAYER_ID,
+            address_sld = os.path.join(DATA_DIR, 'Provo Address Points', 'provo_address_points.sld')
+
+            ## Upload shapefile zip archive
+            geoserver_engine.create_shapefile_resource(
+                store_id='dambreak:provo_address_points',
                 shapefile_zip=address_zip,
                 overwrite=True,
                 debug=True
             )
 
+            ## Upload SLD style
+            with open(address_sld, 'r') as sld:
+                geoserver_engine.create_style(
+                    style_id='dambreak:provo_address_points',
+                    sld=sld.read()
+                )
+
+            ## Assign style to shapfile layer
+            geoserver_engine.update_layer(
+                layer_id='dambreak:provo_address_points',
+                default_style='dambreak:provo_address_points'
+            )
+
+            ## Paths to files
             boundary_zip = os.path.join(DATA_DIR, 'Provo Boundary', 'Provo Boundary.zip')
+            boundary_sld = os.path.join(DATA_DIR, 'Provo Boundary', 'provo_boundary.sld')
+
+            ## Upload shapefile zip archive
             response = geoserver_engine.create_shapefile_resource(
-                store_id=BOUNDARY_LAYER_ID,
+                store_id='dambreak:provo_boundary',
                 shapefile_zip=boundary_zip,
                 overwrite=True,
                 debug=True
+            )
+
+            ## Upload SLD style
+            with open(boundary_sld, 'r') as sld:
+                geoserver_engine.create_style(
+                    style_id='dambreak:provo_boundary',
+                    sld=sld.read()
+                )
+
+            ## Assign style to shapfile layer
+            geoserver_engine.update_layer(
+                layer_id='dambreak:provo_boundary',
+                default_style='dambreak:provo_boundary'
             )
 
     # Convert Raster File into Well Known Binary (WKB)
@@ -170,14 +199,6 @@ def map(request):
         srid=26912, 
         no_data=0
     )
-
-    # response = geoserver_engine.create_coverage_resource(
-    #     store_id=GEOSERVER_WORKSPACE + ':0084_maxFlood',
-    #     coverage_file='/home/tethys/tethysdev/tethysapp-dam_break/tethysapp/dam_break/data/0084_maxFlood.zip',
-    #     coverage_type='grassgrid',
-    #     overwrite=True,
-    #     debug=True
-    # )
 
     # Add Raster to PostGIS Database
     db_session = SessionMaker()
@@ -228,54 +249,27 @@ def map(request):
                 MVLegendClass('polygon', 'Flood Extent', fill='#ffffff', stroke='#3399CC'),
     ])
 
-    # Filter Addresses by Flood Extent
-    # sql = '''
-    #        SELECT val, ST_AsText(ST_Transform(geom, 4326)) As polygon
-    #        FROM (
-    #           SELECT (ST_DumpAsPolygons(raster)).*
-    #           FROM flood_extents WHERE id={0}
-    #        ) As foo
-    #        ORDER BY val;
-    #        '''.format(1)
-    # result = db_session.execute(sql)
-
-    # filters = ''
-    # for row in result:
-    #     intersect_filter = 'WITHIN(the_geom, {0})'.format(row.polygon)
-    #     print(row.polygon)
-
-        # intersect_filter = 'WITHIN(the_geom, POLYGON ((-111.74 40.21, -111.74 40.23, -111.61 40.23, -111.61 40.21, -111.74 40.21)))'.format(row.polygon)
-        # filters = intersect_filter
-    # print(filters)
-    # filters = urllib.quote(filters)
-    # filter_query = '<Filter xmlns:gml="http://www.opengis.net/gml">'\
-    #                     '{0}'\
-    #                 '</Filter>'.format(gml_polygons)
-
-    # print(filter_query)
-    # filter_query = urllib.quote(filter_query)
-
     # Create Address and Boundary Layers
     address_layer = MVLayer(
             source='ImageWMS',
             options={'url': 'http://localhost:8181/geoserver/wms',
-                     'params': {'LAYERS': ADDRESS_LAYER_ID},
+                     'params': {'LAYERS': 'dambreak:provo_address_points'},
                      'serverType': 'geoserver'},
             legend_title='Provo Addresses',
             legend_extent=[-111.7419, 40.1850, -111.5361, 40.3293],
             legend_classes=[
-                MVLegendClass('point', 'Addresses', fill='#ff0000'),
+                MVLegendClass('point', 'Addresses', fill='#000000'),
     ])
 
     boundary_layer = MVLayer(
             source='ImageWMS',
             options={'url': 'http://localhost:8181/geoserver/wms',
-                     'params': {'LAYERS': BOUNDARY_LAYER_ID},
+                     'params': {'LAYERS': 'dambreak:provo_boundary'},
                      'serverType': 'geoserver'},
             legend_title='Provo City',
             legend_extent=[-111.7419, 40.1850, -111.5361, 40.3293],
             legend_classes=[
-                MVLegendClass('polygon', 'City Boundaries', fill='#999999', stroke='#000000'),
+                MVLegendClass('polygon', 'City Boundaries', fill='#ffffff', stroke='#ff0000'),
     ])
 
     initial_view = MVView(
@@ -292,5 +286,7 @@ def map(request):
     )
 
     context = {'map_options': map_options}
-    session.close()
+    
+    db_session.close()
+    
     return render(request, 'dam_break/map.html', context)
