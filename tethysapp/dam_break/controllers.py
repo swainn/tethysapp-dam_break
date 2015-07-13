@@ -2,13 +2,13 @@ import os
 import json
 import urllib
 from datetime import datetime
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 
 from tethys_apps.sdk.gizmos import *
 from tethys_apps.sdk import get_spatial_dataset_engine
 
 from .utilities import generate_flood_hydrograph, write_hydrograph_input_file
-
+from app import ProvoDamBreak as app
 
 def home(request):
     """
@@ -118,6 +118,32 @@ def hydrograph(request):
     context = {'flood_plot': flood_plot}
 
     return render(request, 'dam_break/hydrograph.html', context)
+
+def run(request):
+    """
+    Execute the job that will run the GSSHA model
+    """
+    job_mng = app.get_job_manager()
+    name = 'new_model'
+    project_directory = os.path.dirname(__file__)
+    user_workspace = os.path.join(project_directory, 'workspace', request.user.username)
+    job = job_mng.create_job(name=name, user=request.user, template_name='custom_flood')
+    job.save()
+    print job.id
+    job.working_directory = user_workspace
+    job.execute()
+
+    return redirect('dam_break:jobs')
+
+def jobs(request):
+    """
+    Controller to show a table of the jobs
+    """
+    job_mng = app.get_job_manager()
+    jobs = job_mng.list_jobs(request.user)
+    context = {'jobs': jobs}
+
+    return render(request, 'dam_break/jobs.html', context)
 
 
 def map(request, job_id):
