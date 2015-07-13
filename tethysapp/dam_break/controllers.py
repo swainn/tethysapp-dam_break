@@ -129,7 +129,9 @@ def run(request):
     user_workspace = os.path.join(project_directory, 'workspace', request.user.username)
     job = job_mng.create_job(name=name, user=request.user, template_name='custom_flood')
     job.save()
-    print job.id
+    job_id = job.id
+    job.set_attribute('arguments', job_id)
+    job.set_attribute('transfer_output_files', 'max_flood_%d.txt' % (job_id,))
     job.working_directory = user_workspace
     job.execute()
 
