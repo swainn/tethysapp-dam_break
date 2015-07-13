@@ -217,16 +217,16 @@ def map(request, job_id):
             )
 
     
-    ######################## TO BE MOVED TO COMPUTING JOB ################################
-    # # Upload Raster Zip Archive to GeoServer (TO BE MOVED TO COMPUTING JOB)
-    ## CONVERT RASTER HEADERS TO THIS:
-    # ncols 122
-    # nrows 96
-    # xllcenter 437269.78
-    # yllcenter 4450221.00
-    # cellsize     90.00
-    # NODATA_value 0
-    # ## Paths
+    # ######################## TO BE MOVED TO COMPUTING JOB ################################
+    # # # Upload Raster Zip Archive to GeoServer (TO BE MOVED TO COMPUTING JOB)
+    # ## CONVERT RASTER HEADERS TO THIS:
+    # # ncols 122
+    # # nrows 96
+    # # xllcenter 437269.78
+    # # yllcenter 4450221.00
+    # # cellsize     90.00
+    # # NODATA_value 0
+    ## Paths
     # raster_archive = os.path.join(DATA_DIR, 'Max Flood', 'Max Flood.zip')
     # max_flood_sld = os.path.join(DATA_DIR, 'Max Flood', 'provo_max_flood.sld')
     
@@ -239,20 +239,26 @@ def map(request, job_id):
     #     overwrite=True
     # )
 
-    # ## Upload SLD style
-    # with open(max_flood_sld, 'r') as sld:
-    #     geoserver_engine.create_style(
-    #         style_id='dambreak:provo_max_flood',
-    #         sld=sld.read()
-    #     )
+    # ## Upload SLD style (if it doesn't exist)
+    # response = geoserver_engine.list_styles()
+
+    # if response['success']:
+    #     styles = response['result']
+    #     print(styles)
+    #     if 'provo_max_flood' not in styles:
+    #         with open(max_flood_sld, 'r') as sld:
+    #             geoserver_engine.create_style(
+    #                 style_id='provo_max_flood',
+    #                 sld=sld.read()
+    #             )
 
     # ## Apply style to raster layer
     # geoserver_engine.update_layer(
     #     layer_id='dambreak:max_flood_1',
-    #     default_style='dambreak:provo_max_flood'
+    #     default_style='provo_max_flood'
     # )
 
-    ########################################################################################
+    #########################################################################################
 
     flood_layer_id = 'dambreak:max_flood_{0}'.format(job_id)
     
