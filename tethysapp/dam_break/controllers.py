@@ -171,6 +171,14 @@ def map(request):
         no_data=0
     )
 
+    # response = geoserver_engine.create_coverage_resource(
+    #     store_id=GEOSERVER_WORKSPACE + ':0084_maxFlood',
+    #     coverage_file='/home/tethys/tethysdev/tethysapp-dam_break/tethysapp/dam_break/data/0084_maxFlood.zip',
+    #     coverage_type='grassgrid',
+    #     overwrite=True,
+    #     debug=True
+    # )
+
     # Add Raster to PostGIS Database
     db_session = SessionMaker()
     flood_extent = FloodExtent(
@@ -221,40 +229,40 @@ def map(request):
     ])
 
     # Filter Addresses by Flood Extent
-    sql = '''
-           SELECT val, ST_AsGML(ST_Transform(geom, 4326)) As polygon
-           FROM (
-              SELECT (ST_DumpAsPolygons(raster)).*
-              FROM flood_extents WHERE id={0}
-           ) As foo
-           ORDER BY val;
-           '''.format(1)
-    result = db_session.execute(sql)
+    # sql = '''
+    #        SELECT val, ST_AsText(ST_Transform(geom, 4326)) As polygon
+    #        FROM (
+    #           SELECT (ST_DumpAsPolygons(raster)).*
+    #           FROM flood_extents WHERE id={0}
+    #        ) As foo
+    #        ORDER BY val;
+    #        '''.format(1)
+    # result = db_session.execute(sql)
 
-    gml_polygons = ''
-    for row in result:
-        intersects = '<Intersects>'\
-                         '<PropertyName>the_geom</PropertyName>'\
-                         '{0}'\
-                     '</Intersects>'.format(row.polygon)
-        gml_polygons = intersects
+    # filters = ''
+    # for row in result:
+    #     intersect_filter = 'WITHIN(the_geom, {0})'.format(row.polygon)
+    #     print(row.polygon)
 
-    filter_query = '<Filter xmlns:gml="http://www.opengis.net/gml">'\
-                        '{0}'\
-                    '</Filter>'.format(gml_polygons)
+        # intersect_filter = 'WITHIN(the_geom, POLYGON ((-111.74 40.21, -111.74 40.23, -111.61 40.23, -111.61 40.21, -111.74 40.21)))'.format(row.polygon)
+        # filters = intersect_filter
+    # print(filters)
+    # filters = urllib.quote(filters)
+    # filter_query = '<Filter xmlns:gml="http://www.opengis.net/gml">'\
+    #                     '{0}'\
+    #                 '</Filter>'.format(gml_polygons)
 
-    filter_query = urllib.quote(filter_query)
-    print(filter_query)
+    # print(filter_query)
+    # filter_query = urllib.quote(filter_query)
 
     # Create Address and Boundary Layers
     address_layer = MVLayer(
             source='ImageWMS',
             options={'url': 'http://localhost:8181/geoserver/wms',
-                     'params': {'LAYERS': ADDRESS_LAYER_ID,
-                                'FILTER': filter_query},
+                     'params': {'LAYERS': ADDRESS_LAYER_ID},
                      'serverType': 'geoserver'},
             legend_title='Provo Addresses',
-            legend_extent=[-111.74, 40.20, -111.61, 40.33],
+            legend_extent=[-111.7419, 40.1850, -111.5361, 40.3293],
             legend_classes=[
                 MVLegendClass('point', 'Addresses', fill='#ff0000'),
     ])
@@ -265,18 +273,18 @@ def map(request):
                      'params': {'LAYERS': BOUNDARY_LAYER_ID},
                      'serverType': 'geoserver'},
             legend_title='Provo City',
-            legend_extent=[-111.74, 40.18, -111.61, 40.33],
+            legend_extent=[-111.7419, 40.1850, -111.5361, 40.3293],
             legend_classes=[
                 MVLegendClass('polygon', 'City Boundaries', fill='#999999', stroke='#000000'),
     ])
 
     initial_view = MVView(
         projection='EPSG:4326',
-        center=[-111.6608, 40.2444],
+        center=[-111.6390, 40.25715],
         zoom=12
     )
 
-    map_options = MapView(height='500px',
+    map_options = MapView(height='800px',
                           width='100%',
                           layers=[flood_extent_layer, address_layer, boundary_layer],
                           legend=True,
@@ -284,4 +292,5 @@ def map(request):
     )
 
     context = {'map_options': map_options}
+    session.close()
     return render(request, 'dam_break/map.html', context)
