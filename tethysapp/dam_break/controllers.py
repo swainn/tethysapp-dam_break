@@ -217,61 +217,23 @@ def map(request, job_id):
                 default_style='dambreak:provo_boundary'
             )
 
-    
-    ######################## TO BE MOVED TO COMPUTING JOB ################################
-    # # Upload Raster Zip Archive to GeoServer (TO BE MOVED TO COMPUTING JOB)
-    ## CONVERT RASTER HEADERS TO THIS:
-    # ncols 122
-    # nrows 96
-    # xllcenter 437269.78
-    # yllcenter 4450221.00
-    # cellsize     90.00
-    # NODATA_value 0
-    # ## Paths
-    # raster_archive = os.path.join(DATA_DIR, 'Max Flood', 'Max Flood.zip')
-    # max_flood_sld = os.path.join(DATA_DIR, 'Max Flood', 'provo_max_flood.sld')
-    
-    # ## Upload raster as coverage
-    # geoserver_engine.create_coverage_resource(
-    #     store_id='dambreak:max_flood_1',
-    #     coverage_file=raster_archive,
-    #     coverage_type='arcgrid',
-    #     debug=True,
-    #     overwrite=True
-    # )
-
-    # ## Upload SLD style
-    # with open(max_flood_sld, 'r') as sld:
-    #     geoserver_engine.create_style(
-    #         style_id='dambreak:provo_max_flood',
-    #         sld=sld.read()
-    #     )
-
-    # ## Apply style to raster layer
-    # geoserver_engine.update_layer(
-    #     layer_id='dambreak:max_flood_1',
-    #     default_style='dambreak:provo_max_flood'
-    # )
-
-    ########################################################################################
-
     flood_layer_id = 'dambreak:max_flood_{0}'.format(job_id)
     
     flood_extent_layer = MVLayer(
             source='ImageWMS',
-            options={'url': 'http://localhost:8181/geoserver/wms',
+            options={'url': 'http://ciwmap.chpc.utah.edu:8080/geoserver/wms',
                      'params': {'LAYERS': flood_layer_id},
                      'serverType': 'geoserver'},
             legend_title='Flood',
             legend_extent=[-111.74, 40.21, -111.61, 40.27],
             legend_classes=[
-                MVLegendClass('polygon', 'Flood Extent', fill='#ffffff', stroke='#3399CC'),
+                MVLegendClass('polygon', 'Flood Extent', fill='#0000ff', stroke='#0000ff'),
     ])
 
     # Create Address and Boundary Layers
     address_layer = MVLayer(
             source='ImageWMS',
-            options={'url': 'http://localhost:8181/geoserver/wms',
+            options={'url': 'http://ciwmap.chpc.utah.edu:8080/geoserver/wms',
                      'params': {'LAYERS': 'dambreak:provo_address_points'},
                      'serverType': 'geoserver'},
             legend_title='Provo Addresses',
@@ -282,7 +244,7 @@ def map(request, job_id):
 
     boundary_layer = MVLayer(
             source='ImageWMS',
-            options={'url': 'http://localhost:8181/geoserver/wms',
+            options={'url': 'http://ciwmap.chpc.utah.edu:8080/geoserver/wms',
                      'params': {'LAYERS': 'dambreak:provo_boundary'},
                      'serverType': 'geoserver'},
             legend_title='Provo City',
