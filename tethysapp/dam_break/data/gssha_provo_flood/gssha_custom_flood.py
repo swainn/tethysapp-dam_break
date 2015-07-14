@@ -68,7 +68,7 @@ NODATA_value 0
 
 def zip_floodmap(job_id):
     src = '../max_flood_1.prj'
-    dst = 'max_flood_%s' % (job_id,)
+    dst = 'max_flood_%s.prj' % (job_id,)
     shutil.copyfile(src, dst)
 
     with ZipFile('Max Flood.zip', 'w') as zip_file:
