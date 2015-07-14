@@ -124,14 +124,13 @@ def run(request):
     Execute the job that will run the GSSHA model
     """
     job_mng = app.get_job_manager()
-    name = 'new_model'
+    name = 'max_flood'
     project_directory = os.path.dirname(__file__)
     user_workspace = os.path.join(project_directory, 'workspace', request.user.username)
     job = job_mng.create_job(name=name, user=request.user, template_name='custom_flood')
     job.save()
     job_id = job.id
     job.set_attribute('arguments', job_id)
-    job.set_attribute('transfer_output_files', 'max_flood_%d.txt' % (job_id,))
     job.working_directory = user_workspace
     job.execute()
 
