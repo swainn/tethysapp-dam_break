@@ -1,7 +1,4 @@
 import os
-import json
-import urllib
-from datetime import datetime
 from django.shortcuts import render, redirect
 
 from tethys_apps.sdk.gizmos import *
@@ -70,6 +67,7 @@ def hydrograph(request):
     """
     Controller for the hydrograph page.
     """
+    # Default values
     peak_flow = 800.0
     time_to_peak = 6
     peak_duration = 6
@@ -259,7 +257,7 @@ def map(request, job_id):
         zoom=12
     )
 
-    map_options = MapView(height='800px',
+    map_options = MapView(height='475px',
                           width='100%',
                           layers=[flood_extent_layer, address_layer, boundary_layer],
                           legend=True,
