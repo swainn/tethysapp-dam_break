@@ -15,7 +15,7 @@ def home(request):
                 display_text='Peak Flow (cms)',
                 name='peak_flow',
                 min=500,
-                max=1200,
+                max=2400,
                 initial=800,
                 step=50
     )
@@ -41,9 +41,9 @@ def home(request):
     falling_limb_duration = RangeSlider(
                 display_text='Falling Limb Duration (hrs.)',
                 name='falling_limb_duration',
-                min=12,
-                max=48,
-                initial=24,
+                min=48,
+                max=96,
+                initial=72,
                 step=1
     )
 
@@ -71,7 +71,7 @@ def hydrograph(request):
     peak_flow = 800.0
     time_to_peak = 6
     peak_duration = 6
-    falling_limb_duration = 24
+    falling_limb_duration = 72
 
     if request.POST  and 'submit' in request.POST:
         peak_flow = float(request.POST['peak_flow'])
