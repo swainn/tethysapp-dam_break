@@ -10,7 +10,7 @@ class ProvoDamBreak(TethysAppBase):
 
     name = 'Provo Dam Break'
     index = 'dam_break:home'
-    icon = 'dam_break/images/icon.gif'
+    icon = 'dam_break/images/Flood.png'
     package = 'dam_break'
     root_url = 'dam-break'
     color = '#9b59b6'
